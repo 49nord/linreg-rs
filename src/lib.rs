@@ -22,7 +22,7 @@
 //!    assert_eq!(Some((0.6, 2.2)), linear_regression_of(&tuples));
 //!
 //!
-//!    // Example 3: directly operating on integer (will be convert to float as needed)
+//!    // Example 3: directly operating on integer (converted to float as required)
 //!    let xs: Vec<u8> = vec![1, 2, 3, 4, 5];
 //!    let ys: Vec<u8> = vec![2, 4, 5, 4, 5];
 //!
