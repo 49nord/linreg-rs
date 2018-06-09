@@ -43,6 +43,7 @@ use std::vec::Vec;
 
 use core::iter::Iterator;
 
+/// Calculate a mean over an iterator
 pub trait IteratorMean<F> {
     /// Calculates the mean value of all returned items of an iterator. Returns
     /// `None` if either no items are present or more items than can be counted
@@ -139,7 +140,7 @@ where
     Some((slope, intercept))
 }
 
-/// Linear regression
+/// Linear regression from two slices
 ///
 /// Calculates the linear regression from two slices, one for x- and one for y-values.
 ///
@@ -167,7 +168,7 @@ where
     lin_reg(xs.iter(), ys.iter(), x_mean, y_mean)
 }
 
-/// Linear regression
+/// Linear regression from tuples
 ///
 /// Calculates the linear regression from a slice of tuple values.
 ///
