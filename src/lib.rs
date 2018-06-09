@@ -4,6 +4,10 @@
 
 #![no_std]
 
+extern crate num_traits;
+
+use num_traits::Float;
+
 #[cfg(test)]
 #[macro_use]
 extern crate std;
@@ -13,22 +17,23 @@ use std::vec::Vec;
 
 use core::iter::Iterator;
 
-pub trait IteratorMean {
-    fn mean(&mut self) -> Option<f64>;
+pub trait IteratorMean<F> {
+    fn mean(&mut self) -> Option<F>;
 }
 
-impl<'a, T, I> IteratorMean for I
+impl<'a, T, I, F> IteratorMean<F> for I
 where
-    T: 'a + Into<f64> + Clone,
+    T: 'a + Into<F> + Clone,
     I: Iterator<Item = &'a T>,
+    F: Float,
 {
-    fn mean(&mut self) -> Option<f64> {
-        let mut total = 0.0f64;
+    fn mean(&mut self) -> Option<F> {
+        let mut total = F::zero();
         let mut count: usize = 0;
 
         loop {
             if let Some(i) = self.next() {
-                total += i.clone().into();
+                total = total + i.clone().into();
                 count += 1;
             } else {
                 break;
@@ -36,7 +41,7 @@ where
         }
 
         if count > 0 {
-            Some(total / count as f64)
+            Some(total / F::from(count)?)
         } else {
             None
         }
@@ -57,41 +62,38 @@ fn simple_float_mean() {
 
 #[test]
 fn empty_set_has_no_mean() {
-    assert!(Vec::<u32>::new().iter().mean().is_none());
+    let res: Option<f32> = Vec::<u16>::new().iter().mean();
+    assert!(res.is_none());
 }
 
-fn lin_reg<'a, X, Y, IX, IY>(xs: IX, ys: IY, x_mean: f64, y_mean: f64) -> Option<(f64, f64)>
+fn lin_reg<'a, X, Y, IX, IY, F>(xs: IX, ys: IY, x_mean: F, y_mean: F) -> Option<(F, F)>
 where
-    X: 'a + Into<f64> + Clone,
-    Y: 'a + Into<f64> + Clone,
+    X: 'a + Into<F> + Clone,
+    Y: 'a + Into<F> + Clone,
     IX: Iterator<Item = &'a X>,
     IY: Iterator<Item = &'a Y>,
+    F: Float,
 {
     // SUM (x-mean(x))^2
-    let mut xxm2 = 0.0;
+    let mut xxm2 = F::zero();
 
     // SUM (x-mean(x)) (y-mean(y))
-    let mut xmym2 = 0.0;
+    let mut xmym2 = F::zero();
 
     for (x, y) in xs.zip(ys) {
-        let x: f64 = x.clone().into();
-        let y: f64 = y.clone().into();
+        let x: F = x.clone().into();
+        let y: F = y.clone().into();
 
-        xxm2 += (x - x_mean) * (x - x_mean);
-        xmym2 += (x - x_mean) * (y - y_mean);
-    }
-
-    // try to catch some DIV0s
-    if xxm2 == 0.0 {
-        return None;
+        xxm2 = xxm2 + (x - x_mean) * (x - x_mean);
+        xmym2 = xmym2 + (x - x_mean) * (y - y_mean);
     }
 
     let slope = xmym2 / xxm2;
 
-    // // we check for divide-by-zero after the fact
-    // if slope.is_nan() {
-    //     return None;
-    // }
+    // we check for divide-by-zero after the fact
+    if slope.is_nan() {
+        return None;
+    }
 
     let intercept = y_mean - slope * x_mean;
 
@@ -99,10 +101,11 @@ where
 }
 
 /// Linear regression
-pub fn linear_regression<X, Y>(xs: &[X], ys: &[Y]) -> Option<(f64, f64)>
+pub fn linear_regression<X, Y, F>(xs: &[X], ys: &[Y]) -> Option<(F, F)>
 where
-    X: Clone + Into<f64>,
-    Y: Clone + Into<f64>,
+    X: Clone + Into<F>,
+    Y: Clone + Into<F>,
+    F: Float,
 {
     if xs.len() != ys.len() {
         return None;
@@ -115,10 +118,11 @@ where
     lin_reg(xs.iter(), ys.iter(), x_mean, y_mean)
 }
 
-pub fn linear_regression_on<X, Y>(xys: &[(X, Y)]) -> Option<(f64, f64)>
+pub fn linear_regression_on<X, Y, F>(xys: &[(X, Y)]) -> Option<(F, F)>
 where
-    X: Clone + Into<f64>,
-    Y: Clone + Into<f64>,
+    X: Clone + Into<F>,
+    Y: Clone + Into<F>,
+    F: Float,
 {
     // FIXME: cache penalty here, we should be calculating both means in a single step to avoid
     //        iterating twice
