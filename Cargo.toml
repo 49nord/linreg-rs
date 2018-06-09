@@ -6,7 +6,7 @@ license = "MIT"
 name = "linreg"
 readme = "README.md"
 repository = "https://github.com/49nord/linreg-rs.git"
-version = "0.1.2"
+version = "0.1.3"
 
 [dependencies]
 num-traits = "0.2.4"
