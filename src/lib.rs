@@ -1,4 +1,17 @@
-use std::iter::Iterator;
+//! Linear regression
+//!
+//! `linreg` calculates linear regressions for two dimensional measurements.
+
+#![no_std]
+
+#[cfg(test)]
+#[macro_use]
+extern crate std;
+
+#[cfg(test)]
+use std::vec::Vec;
+
+use core::iter::Iterator;
 
 pub trait IteratorMean {
     fn mean(&mut self) -> Option<f64>;
@@ -64,16 +77,21 @@ where
         let x: f64 = x.clone().into();
         let y: f64 = y.clone().into();
 
-        xxm2 += (x - x_mean).powi(2);
+        xxm2 += (x - x_mean) * (x - x_mean);
         xmym2 += (x - x_mean) * (y - y_mean);
+    }
+
+    // try to catch some DIV0s
+    if xxm2 == 0.0 {
+        return None;
     }
 
     let slope = xmym2 / xxm2;
 
-    // we check for divide-by-zero after the fact
-    if slope.is_nan() {
-        return None;
-    }
+    // // we check for divide-by-zero after the fact
+    // if slope.is_nan() {
+    //     return None;
+    // }
 
     let intercept = y_mean - slope * x_mean;
 
