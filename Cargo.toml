@@ -1,12 +1,12 @@
 [package]
 authors = ["49nord GmbH <hello@49nord.de>"]
 description = "Calculates linear regresssions of two-dimensional data. Does not use stdlib, only depends on numeric traits."
-docs = "https://docs.rs/linreg"
+documentation = "https://docs.rs/linreg"
 license = "MIT"
 name = "linreg"
 readme = "README.md"
-repo = "https://github.com/49nord/linreg-rs.git"
-version = "0.1.1"
+repository = "https://github.com/49nord/linreg-rs.git"
+version = "0.1.2"
 
 [dependencies]
 num-traits = "0.2.4"
