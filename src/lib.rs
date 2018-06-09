@@ -47,6 +47,39 @@ fn empty_set_has_no_mean() {
     assert!(Vec::<u32>::new().iter().mean().is_none());
 }
 
+fn lin_reg<'a, X, Y, IX, IY>(xs: IX, ys: IY, x_mean: f64, y_mean: f64) -> Option<(f64, f64)>
+where
+    X: 'a + Into<f64> + Clone,
+    Y: 'a + Into<f64> + Clone,
+    IX: Iterator<Item = &'a X>,
+    IY: Iterator<Item = &'a Y>,
+{
+    // SUM (x-mean(x))^2
+    let mut xxm2 = 0.0;
+
+    // SUM (x-mean(x)) (y-mean(y))
+    let mut xmym2 = 0.0;
+
+    for (x, y) in xs.zip(ys) {
+        let x: f64 = x.clone().into();
+        let y: f64 = y.clone().into();
+
+        xxm2 += (x - x_mean).powi(2);
+        xmym2 += (x - x_mean) * (y - y_mean);
+    }
+
+    let slope = xmym2 / xxm2;
+
+    // we check for divide-by-zero after the fact
+    if slope.is_nan() {
+        return None;
+    }
+
+    let intercept = y_mean - slope * x_mean;
+
+    Some((slope, intercept))
+}
+
 /// Linear regression
 pub fn linear_regression<X, Y>(xs: &[X], ys: &[Y]) -> Option<(f64, f64)>
 where
@@ -58,33 +91,28 @@ where
     }
 
     // if one of the axes is empty, we return `None`
-    let x_avg = xs.iter().mean()?;
-    let y_avg = ys.iter().mean()?;
+    let x_mean = xs.iter().mean()?;
+    let y_mean = ys.iter().mean()?;
 
-    // SUM (x-mean(x))^2
-    let mut xxm2 = 0.0;
+    lin_reg(xs.iter(), ys.iter(), x_mean, y_mean)
+}
 
-    // SUM (x-mean(x)) (y-mean(y))
-    let mut xmym2 = 0.0;
+pub fn linear_regression_on<X, Y>(xys: &[(X, Y)]) -> Option<(f64, f64)>
+where
+    X: Clone + Into<f64>,
+    Y: Clone + Into<f64>,
+{
+    // FIXME: cache penalty here, we should be calculating both means in a single step to avoid
+    //        iterating twice
+    let x_mean = xys.iter().map(|(x, _)| x).mean()?;
+    let y_mean = xys.iter().map(|(_, y)| y).mean()?;
 
-    for (x, y) in xs.iter().zip(ys.iter()) {
-        let x: f64 = x.clone().into();
-        let y: f64 = y.clone().into();
-
-        xxm2 += (x - x_avg).powi(2);
-        xmym2 += (x - x_avg) * (y - y_avg);
-    }
-
-    let slope = xmym2 / xxm2;
-
-    // we check for divide-by-zero after the fact
-    if slope.is_nan() {
-        return None;
-    }
-
-    let intercept = y_avg - slope * x_avg;
-
-    Some((slope, intercept))
+    lin_reg(
+        xys.iter().map(|(x, _)| x),
+        xys.iter().map(|(_, y)| y),
+        x_mean,
+        y_mean,
+    )
 }
 
 #[test]
