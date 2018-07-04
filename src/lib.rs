@@ -32,7 +32,7 @@
 
 extern crate num_traits;
 
-use num_traits::Float;
+use num_traits::float::FloatCore;
 
 #[cfg(test)]
 #[macro_use]
@@ -55,7 +55,7 @@ impl<'a, T, I, F> IteratorMean<F> for I
 where
     T: 'a + Into<F> + Clone,
     I: Iterator<Item = &'a T>,
-    F: Float,
+    F: FloatCore,
 {
     fn mean(&mut self) -> Option<F> {
         let mut total = F::zero();
@@ -112,7 +112,7 @@ where
     Y: 'a + Into<F> + Clone,
     IX: Iterator<Item = &'a X>,
     IY: Iterator<Item = &'a Y>,
-    F: Float,
+    F: FloatCore,
 {
     // SUM (x-mean(x))^2
     let mut xxm2 = F::zero();
@@ -155,7 +155,7 @@ pub fn linear_regression<X, Y, F>(xs: &[X], ys: &[Y]) -> Option<(F, F)>
 where
     X: Clone + Into<F>,
     Y: Clone + Into<F>,
-    F: Float,
+    F: FloatCore,
 {
     if xs.len() != ys.len() {
         return None;
@@ -182,7 +182,7 @@ pub fn linear_regression_of<X, Y, F>(xys: &[(X, Y)]) -> Option<(F, F)>
 where
     X: Clone + Into<F>,
     Y: Clone + Into<F>,
-    F: Float,
+    F: FloatCore,
 {
     // FIXME: cache penalty here, we should be calculating both means in a single step
     //        to avoid iterating twice
