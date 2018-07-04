@@ -134,7 +134,12 @@ fn simple_float_mean() {
 #[test]
 fn empty_set_has_no_mean() {
     let res: Result<f32, Error> = Vec::<u16>::new().iter().mean();
-    assert_eq!(res, Err(Error {kind: ErrorKind::DivByZero}));
+    assert_eq!(
+        res,
+        Err(Error {
+            kind: ErrorKind::DivByZero
+        })
+    );
 }
 
 /// Calculates a linear regression.
@@ -215,7 +220,8 @@ where
 ///
 /// Returns an error if
 ///
-/// * `x` or `y` tuple members do not have a mean (e.g. if they are empty, see `IteratorMean` for details)
+/// * `x` or `y` tuple members do not have a mean (e.g. if they are empty,
+/// see [`IteratorMean`](./trait.IteratorMean.html) for details)
 /// * the slope is too steep to represent, approaching infinity
 ///
 /// Returns `Ok(slope, intercept)` of the regression line.
@@ -225,10 +231,27 @@ where
     Y: Clone + Into<F>,
     F: FloatCore,
 {
-    // FIXME: cache penalty here, we should be calculating both means in a single step
-    //        to avoid iterating twice
-    let x_mean = xys.iter().map(|(x, _)| x).mean()?;
-    let y_mean = xys.iter().map(|(_, y)| y).mean()?;
+    let (count, x_avg, y_avg) =
+        xys.iter()
+            .fold((0, F::zero(), F::zero()), |acc: (usize, F, F), (x, y)| {
+                (
+                    acc.0 + 1,
+                    acc.1 + x.clone().into(),
+                    acc.2 + y.clone().into(),
+                )
+            });
+
+    if count <= 0 {
+        return Err(ErrorKind::DivByZero.into());
+    }
+
+    let count = match F::from(count) {
+        Some(f) => f,
+        None => return Err(ErrorKind::FloatConvError(count).into()),
+    };
+
+    let x_mean = x_avg / count;
+    let y_mean = y_avg / count;
 
     lin_reg(
         xys.iter().map(|(x, _)| x),
