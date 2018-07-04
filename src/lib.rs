@@ -32,7 +32,7 @@
 
 extern crate num_traits;
 
-use num_traits::Float;
+use num_traits::float::FloatCore;
 
 #[cfg(test)]
 #[macro_use]
@@ -57,7 +57,7 @@ use core::iter::Sum;
 pub fn lin_reg<'a, I, F>(xys: I, x_mean: F, y_mean: F) -> Option<(F, F)>
 where
     I: Iterator<Item = (F, F)>,
-    F: Float,
+    F: FloatCore,
 {
     // SUM (x-mean(x))^2
     let mut xxm2 = F::zero();
@@ -98,7 +98,7 @@ pub fn linear_regression<X, Y, F>(xs: &[X], ys: &[Y]) -> Option<(F, F)>
 where
     X: Clone + Into<F>,
     Y: Clone + Into<F>,
-    F: Float + Sum,
+    F: FloatCore + Sum,
 {
     if xs.len() != ys.len() {
         return None;
@@ -135,7 +135,7 @@ pub fn linear_regression_of<X, Y, F>(xys: &[(X, Y)]) -> Option<(F, F)>
 where
     X: Clone + Into<F>,
     Y: Clone + Into<F>,
-    F: Float,
+    F: FloatCore,
 {
     if xys.is_empty() {
         return None;
