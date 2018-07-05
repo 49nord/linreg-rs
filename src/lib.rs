@@ -29,6 +29,7 @@
 //!    assert_eq!(Ok((0.6, 2.2)), linear_regression(&xs, &ys));
 //! ```
 #![no_std]
+#![deny(clippy::pedantic)]
 
 extern crate num_traits;
 
@@ -131,12 +132,12 @@ where
     }
 
     if xs.is_empty() {
-        return Err(Error::Mean.into());
+        return Err(Error::Mean);
     }
-    let x_sum: F = xs.iter().cloned().map(|i| i.into()).sum();
+    let x_sum: F = xs.iter().cloned().map(Into::into).sum();
     let n = F::from(xs.len()).ok_or(Error::Mean)?;
     let x_mean = x_sum / n;
-    let y_sum: F = ys.iter().cloned().map(|i| i.into()).sum();
+    let y_sum: F = ys.iter().cloned().map(Into::into).sum();
     let y_mean = y_sum / n;
 
     lin_reg(
@@ -166,7 +167,7 @@ where
     F: FloatCore,
 {
     if xys.is_empty() {
-        return Err(Error::Mean.into());
+        return Err(Error::Mean);
     }
     // We're handrolling the mean computation here, because our generic implementation can't handle tuples.
     // If we ran the generic impl on each tuple field, that would be very cache inefficient
