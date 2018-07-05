@@ -38,9 +38,6 @@ use num_traits::float::FloatCore;
 #[macro_use]
 extern crate std;
 
-#[cfg(test)]
-use std::vec::Vec;
-
 use core::iter::Iterator;
 use core::iter::Sum;
 use core::{convert, fmt};
@@ -79,7 +76,6 @@ impl convert::From<ErrorKind> for Error {
         Error { kind }
     }
 }
-
 
 /// Calculates a linear regression.
 ///
@@ -199,25 +195,40 @@ where
     )
 }
 
-#[test]
-fn test_example_regression() {
-    let xs: Vec<f64> = vec![1.0, 2.0, 3.0, 4.0, 5.0];
-    let ys: Vec<f64> = vec![2.0, 4.0, 5.0, 4.0, 5.0];
+#[cfg(test)]
+mod tests {
+    use std::vec::Vec;
 
-    assert_eq!(Ok((0.6, 2.2)), linear_regression(&xs, &ys));
-}
+    use super::*;
 
-#[test]
-fn test_example_regression_of() {
-    let tuples: Vec<(f32, f32)> = vec![(1.0, 2.0), (2.0, 4.0), (3.0, 5.0), (4.0, 4.0), (5.0, 5.0)];
+    #[test]
+    fn float_slices_regression() {
+        let xs: Vec<f64> = vec![1.0, 2.0, 3.0, 4.0, 5.0];
+        let ys: Vec<f64> = vec![2.0, 4.0, 5.0, 4.0, 5.0];
 
-    assert_eq!(Ok((0.6, 2.2)), linear_regression_of(&tuples));
-}
+        assert_eq!(Ok((0.6, 2.2)), linear_regression(&xs, &ys));
+    }
 
-#[test]
-fn test_integer_regression() {
-    let xs: Vec<u8> = vec![1, 2, 3, 4, 5];
-    let ys: Vec<u8> = vec![2, 4, 5, 4, 5];
+    #[test]
+    fn int_slices_regression() {
+        let xs: Vec<u8> = vec![1, 2, 3, 4, 5];
+        let ys: Vec<u8> = vec![2, 4, 5, 4, 5];
 
-    assert_eq!(Ok((0.6, 2.2)), linear_regression(&xs, &ys));
+        assert_eq!(Ok((0.6, 2.2)), linear_regression(&xs, &ys));
+    }
+
+    #[test]
+    fn float_tuples_regression() {
+        let tuples: Vec<(f32, f32)> =
+            vec![(1.0, 2.0), (2.0, 4.0), (3.0, 5.0), (4.0, 4.0), (5.0, 5.0)];
+
+        assert_eq!(Ok((0.6, 2.2)), linear_regression_of(&tuples));
+    }
+
+    #[test]
+    fn int_tuples_regression() {
+        let tuples: Vec<(u32, u32)> = vec![(1, 2), (2, 4), (3, 5), (4, 4), (5, 5)];
+
+        assert_eq!(Ok((0.6, 2.2)), linear_regression_of(&tuples));
+    }
 }
