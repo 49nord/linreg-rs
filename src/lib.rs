@@ -38,13 +38,13 @@ use num_traits::float::FloatCore;
 #[macro_use]
 extern crate std;
 
+use core::fmt;
 use core::iter::Iterator;
 use core::iter::Sum;
-use core::{convert, fmt};
 
 /// The kinds of errors that can occur when calculating a linear regression.
 #[derive(Copy, Clone, Debug, PartialEq)]
-pub enum ErrorKind {
+pub enum Error {
     /// Tried to divide by Zero.
     DivByZero,
     /// Lengths of the inputs are different.
@@ -53,34 +53,22 @@ pub enum ErrorKind {
     FloatConvError(usize),
 }
 
-/// Wrapper type for [ErrorKind](./enum.ErrorKind.html).
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub struct Error {
-    pub kind: ErrorKind,
-}
-
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let description = match self.kind {
-            ErrorKind::DivByZero => "Tried to divide by zero",
-            ErrorKind::InputLenDif(_, _) => "Lengths of inputs are different",
-            ErrorKind::FloatConvError(_) => "Failed to convert into a Float",
+        let description = match self {
+            Error::DivByZero => "Tried to divide by zero",
+            Error::InputLenDif(_, _) => "Lengths of inputs are different",
+            Error::FloatConvError(_) => "Failed to convert into a Float",
         };
 
         description.fmt(f)
     }
 }
 
-impl convert::From<ErrorKind> for Error {
-    fn from(kind: ErrorKind) -> Self {
-        Error { kind }
-    }
-}
-
 /// Calculates a linear regression.
 ///
 /// Lower-level linear regression function. Assumes that `x_mean` and `y_mean`
-/// have already been calculated. Returns `ErrorKind::DivByZero` if
+/// have already been calculated. Returns `Error::DivByZero` if
 ///
 /// * the slope is too steep to represent, approaching infinity.
 ///
@@ -107,7 +95,7 @@ where
 
     // we check for divide-by-zero after the fact
     if slope.is_nan() {
-        return Err(ErrorKind::DivByZero.into());
+        return Err(Error::DivByZero);
     }
 
     let intercept = y_mean - slope * x_mean;
@@ -134,14 +122,14 @@ where
     F: FloatCore + Sum,
 {
     if xs.len() != ys.len() {
-        return Err(ErrorKind::InputLenDif(xs.len(), ys.len()).into());
+        return Err(Error::InputLenDif(xs.len(), ys.len()));
     }
 
     if xs.is_empty() {
-        return Err(ErrorKind::DivByZero.into());
+        return Err(Error::DivByZero.into());
     }
     let x_sum: F = xs.iter().cloned().map(|i| i.into()).sum();
-    let n = F::from(xs.len()).ok_or(ErrorKind::FloatConvError(xs.len()))?;
+    let n = F::from(xs.len()).ok_or(Error::FloatConvError(xs.len()))?;
     let x_mean = x_sum / n;
     let y_sum: F = ys.iter().cloned().map(|i| i.into()).sum();
     let y_mean = y_sum / n;
@@ -173,11 +161,11 @@ where
     F: FloatCore,
 {
     if xys.is_empty() {
-        return Err(ErrorKind::DivByZero.into());
+        return Err(Error::DivByZero.into());
     }
     // We're handrolling the mean computation here, because our generic implementation can't handle tuples.
     // If we ran the generic impl on each tuple field, that would be very cache inefficient
-    let n = F::from(xys.len()).ok_or(ErrorKind::FloatConvError(xys.len()))?;
+    let n = F::from(xys.len()).ok_or(Error::FloatConvError(xys.len()))?;
     let (x_sum, y_sum) = xys
         .iter()
         .cloned()
