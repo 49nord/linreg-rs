@@ -45,23 +45,28 @@ use core::iter::Sum;
 /// The kinds of errors that can occur when calculating a linear regression.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum Error {
-    /// Tried to divide by Zero.
-    DivByZero,
+    /// The slope is too steep to represent, approaching infinity.
+    TooSteep,
+    /// Failed to calculate mean.
+    /// This means the input was empty or had too many elements.
+    Mean,
     /// Lengths of the inputs are different.
-    InputLenDif(usize, usize),
-    /// Converting to a [Float](../num_traits/float/trait.FloatCore.html) failed.
-    FloatConvError(usize),
+    InputLenDif,
 }
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let description = match self {
-            Error::DivByZero => "Tried to divide by zero",
-            Error::InputLenDif(_, _) => "Lengths of inputs are different",
-            Error::FloatConvError(_) => "Failed to convert into a Float",
-        };
-
-        description.fmt(f)
+        match self {
+            Error::TooSteep => write!(
+                f,
+                "The slope is too steep to represent, approaching infinity."
+            ),
+            Error::Mean => write!(
+                f,
+                "Failed to calculate mean. Input was empty or had too many elements"
+            ),
+            Error::InputLenDif => write!(f, "Lengths of the inputs are different"),
+        }
     }
 }
 
@@ -95,7 +100,7 @@ where
 
     // we check for divide-by-zero after the fact
     if slope.is_nan() {
-        return Err(Error::DivByZero);
+        return Err(Error::TooSteep);
     }
 
     let intercept = y_mean - slope * x_mean;
@@ -122,14 +127,14 @@ where
     F: FloatCore + Sum,
 {
     if xs.len() != ys.len() {
-        return Err(Error::InputLenDif(xs.len(), ys.len()));
+        return Err(Error::InputLenDif);
     }
 
     if xs.is_empty() {
-        return Err(Error::DivByZero.into());
+        return Err(Error::Mean.into());
     }
     let x_sum: F = xs.iter().cloned().map(|i| i.into()).sum();
-    let n = F::from(xs.len()).ok_or(Error::FloatConvError(xs.len()))?;
+    let n = F::from(xs.len()).ok_or(Error::Mean)?;
     let x_mean = x_sum / n;
     let y_sum: F = ys.iter().cloned().map(|i| i.into()).sum();
     let y_mean = y_sum / n;
@@ -161,11 +166,11 @@ where
     F: FloatCore,
 {
     if xys.is_empty() {
-        return Err(Error::DivByZero.into());
+        return Err(Error::Mean.into());
     }
     // We're handrolling the mean computation here, because our generic implementation can't handle tuples.
     // If we ran the generic impl on each tuple field, that would be very cache inefficient
-    let n = F::from(xys.len()).ok_or(Error::FloatConvError(xys.len()))?;
+    let n = F::from(xys.len()).ok_or(Error::Mean)?;
     let (x_sum, y_sum) = xys
         .iter()
         .cloned()
