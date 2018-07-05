@@ -87,16 +87,12 @@ where
         let mut total = F::zero();
         let mut count: usize = 0;
 
-        loop {
-            if let Some(i) = self.next() {
-                total = total + i.clone().into();
-                count += 1;
-            } else {
-                break;
-            }
+        for i in self {
+            total = total + i.clone().into();
+            count += 1;
         }
 
-        if count <= 0 {
+        if count == 0 {
             return None;
         }
 
@@ -203,7 +199,7 @@ where
                 )
             });
 
-    if count <= 0 {
+    if count == 0 {
         return Err(Error::Mean);
     }
 
