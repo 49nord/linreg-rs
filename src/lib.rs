@@ -38,29 +38,34 @@ use num_traits::float::FloatCore;
 #[macro_use]
 extern crate std;
 
-use core::iter::Iterator;
 use core::fmt;
+use core::iter::Iterator;
 
 /// The kinds of errors that can occur when calculating a linear regression.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum Error {
-    /// Tried to divide by Zero.
-    DivByZero,
+    /// The slope is too steep to represent, approaching infinity.
+    TooSteep,
+    /// Failed to calculate mean.
+    /// This means the input was empty or had too many elements.
+    Mean,
     /// Lengths of the inputs are different.
-    InputLenDif(usize, usize),
-    /// Converting to a [Float](../num_traits/float/trait.FloatCore.html) failed.
-    FloatConvError(usize),
+    InputLenDif,
 }
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let description = match self {
-            Error::DivByZero => "Tried to divide by zero",
-            Error::InputLenDif(_, _) => "Lengths of inputs are different",
-            Error::FloatConvError(_) => "Failed to convert into a Float",
-        };
-
-        description.fmt(f)
+        match self {
+            Error::TooSteep => write!(
+                f,
+                "The slope is too steep to represent, approaching infinity."
+            ),
+            Error::Mean => write!(
+                f,
+                "Failed to calculate mean. Input was empty or had too many elements"
+            ),
+            Error::InputLenDif => write!(f, "Lengths of the inputs are different"),
+        }
     }
 }
 
@@ -69,7 +74,7 @@ pub trait IteratorMean<F> {
     /// Calculates the mean value of all returned items of an iterator. Returns
     /// an error if either no items are present or more items than can be counted
     /// by `F` (conversion from `usize` to `F` is not possible).
-    fn mean(&mut self) -> Result<F, Error>;
+    fn mean(&mut self) -> Option<F>;
 }
 
 impl<'a, T, I, F> IteratorMean<F> for I
@@ -78,7 +83,7 @@ where
     I: Iterator<Item = &'a T>,
     F: FloatCore,
 {
-    fn mean(&mut self) -> Result<F, Error> {
+    fn mean(&mut self) -> Option<F> {
         let mut total = F::zero();
         let mut count: usize = 0;
 
@@ -92,15 +97,10 @@ where
         }
 
         if count <= 0 {
-            return Err(Error::DivByZero);
+            return None;
         }
 
-        let count = match F::from(count) {
-            Some(f) => f,
-            None => return Err(Error::FloatConvError(count)),
-        };
-
-        Ok(total / count)
+        Some(total / F::from(count)?)
     }
 }
 
@@ -140,7 +140,7 @@ where
 
     // we check for divide-by-zero after the fact
     if slope.is_nan() {
-        return Err(Error::DivByZero);
+        return Err(Error::TooSteep);
     }
 
     let intercept = y_mean - slope * x_mean;
@@ -166,12 +166,12 @@ where
     F: FloatCore,
 {
     if xs.len() != ys.len() {
-        return Err(Error::InputLenDif(xs.len(), ys.len()));
+        return Err(Error::InputLenDif);
     }
 
     // if one of the axes is empty, we return `Error::DivByZero`
-    let x_mean = xs.iter().mean()?;
-    let y_mean = ys.iter().mean()?;
+    let x_mean = xs.iter().mean().ok_or(Error::Mean)?;
+    let y_mean = ys.iter().mean().ok_or(Error::Mean)?;
 
     lin_reg(xs.iter(), ys.iter(), x_mean, y_mean)
 }
@@ -204,12 +204,12 @@ where
             });
 
     if count <= 0 {
-        return Err(Error::DivByZero);
+        return Err(Error::Mean);
     }
 
     let count = match F::from(count) {
         Some(f) => f,
-        None => return Err(Error::FloatConvError(count)),
+        None => return Err(Error::Mean),
     };
 
     let x_mean = x_total / count;
@@ -243,8 +243,8 @@ mod tests {
 
     #[test]
     fn empty_set_has_no_mean() {
-        let res: Result<f32, Error> = Vec::<u16>::new().iter().mean();
-        assert_eq!(res, Err(Error::DivByZero));
+        let res: Option<f32> = Vec::<u16>::new().iter().mean();
+        assert!(res.is_none());
     }
 
     #[test]
