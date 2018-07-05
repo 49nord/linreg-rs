@@ -205,7 +205,7 @@ where
     Y: Clone + Into<F>,
     F: FloatCore,
 {
-    let (count, x_avg, y_avg) =
+    let (count, x_total, y_total) =
         xys.iter()
             .fold((0, F::zero(), F::zero()), |acc: (usize, F, F), (x, y)| {
                 (
@@ -224,8 +224,8 @@ where
         None => return Err(ErrorKind::FloatConvError(count).into()),
     };
 
-    let x_mean = x_avg / count;
-    let y_mean = y_avg / count;
+    let x_mean = x_total / count;
+    let y_mean = y_total / count;
 
     lin_reg(
         xys.iter().map(|(x, _)| x),
