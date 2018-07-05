@@ -39,11 +39,11 @@ use num_traits::float::FloatCore;
 extern crate std;
 
 use core::iter::Iterator;
-use core::{convert, fmt};
+use core::fmt;
 
 /// The kinds of errors that can occur when calculating a linear regression.
 #[derive(Copy, Clone, Debug, PartialEq)]
-pub enum ErrorKind {
+pub enum Error {
     /// Tried to divide by Zero.
     DivByZero,
     /// Lengths of the inputs are different.
@@ -52,27 +52,15 @@ pub enum ErrorKind {
     FloatConvError(usize),
 }
 
-/// Wrapper type for [ErrorKind](./enum.ErrorKind.html).
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub struct Error {
-    pub kind: ErrorKind,
-}
-
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let description = match self.kind {
-            ErrorKind::DivByZero => "Tried to divide by zero",
-            ErrorKind::InputLenDif(_, _) => "Lengths of inputs are different",
-            ErrorKind::FloatConvError(_) => "Failed to convert into a Float",
+        let description = match self {
+            Error::DivByZero => "Tried to divide by zero",
+            Error::InputLenDif(_, _) => "Lengths of inputs are different",
+            Error::FloatConvError(_) => "Failed to convert into a Float",
         };
 
         description.fmt(f)
-    }
-}
-
-impl convert::From<ErrorKind> for Error {
-    fn from(kind: ErrorKind) -> Self {
-        Error { kind }
     }
 }
 
@@ -104,12 +92,12 @@ where
         }
 
         if count <= 0 {
-            return Err(ErrorKind::DivByZero.into());
+            return Err(Error::DivByZero);
         }
 
         let count = match F::from(count) {
             Some(f) => f,
-            None => return Err(ErrorKind::FloatConvError(count).into()),
+            None => return Err(Error::FloatConvError(count)),
         };
 
         Ok(total / count)
@@ -119,7 +107,7 @@ where
 /// Calculates a linear regression.
 ///
 /// Lower-level linear regression function. Assumes that `x_mean` and `y_mean`
-/// have already been calculated. Returns `ErrorKind::DivByZero` if
+/// have already been calculated. Returns `Error::DivByZero` if
 ///
 /// * the slope is too steep to represent, approaching infinity.
 ///
@@ -152,7 +140,7 @@ where
 
     // we check for divide-by-zero after the fact
     if slope.is_nan() {
-        return Err(ErrorKind::DivByZero.into());
+        return Err(Error::DivByZero);
     }
 
     let intercept = y_mean - slope * x_mean;
@@ -178,10 +166,10 @@ where
     F: FloatCore,
 {
     if xs.len() != ys.len() {
-        return Err(ErrorKind::InputLenDif(xs.len(), ys.len()).into());
+        return Err(Error::InputLenDif(xs.len(), ys.len()));
     }
 
-    // if one of the axes is empty, we return `ErrorKind::DivByZero`
+    // if one of the axes is empty, we return `Error::DivByZero`
     let x_mean = xs.iter().mean()?;
     let y_mean = ys.iter().mean()?;
 
@@ -216,12 +204,12 @@ where
             });
 
     if count <= 0 {
-        return Err(ErrorKind::DivByZero.into());
+        return Err(Error::DivByZero);
     }
 
     let count = match F::from(count) {
         Some(f) => f,
-        None => return Err(ErrorKind::FloatConvError(count).into()),
+        None => return Err(Error::FloatConvError(count)),
     };
 
     let x_mean = x_total / count;
@@ -241,13 +229,13 @@ mod tests {
 
     use super::*;
 
-#[test]
+    #[test]
     fn simple_integer_mean() {
         let vals: Vec<u32> = vec![5, 8, 12, 17];
         assert_eq!(10.5, vals.iter().mean().unwrap());
     }
 
-#[test]
+    #[test]
     fn simple_float_mean() {
         let vals: Vec<f64> = vec![5.0, 8.0, 12.0, 17.0];
         assert_eq!(10.5, vals.iter().mean().unwrap());
@@ -256,18 +244,13 @@ mod tests {
     #[test]
     fn empty_set_has_no_mean() {
         let res: Result<f32, Error> = Vec::<u16>::new().iter().mean();
-        assert_eq!(
-            res,
-            Err(Error {
-                kind: ErrorKind::DivByZero
-            })
-        );
+        assert_eq!(res, Err(Error::DivByZero));
     }
 
     #[test]
     fn float_slices_regression() {
-    let xs: Vec<f64> = vec![1.0, 2.0, 3.0, 4.0, 5.0];
-    let ys: Vec<f64> = vec![2.0, 4.0, 5.0, 4.0, 5.0];
+        let xs: Vec<f64> = vec![1.0, 2.0, 3.0, 4.0, 5.0];
+        let ys: Vec<f64> = vec![2.0, 4.0, 5.0, 4.0, 5.0];
 
         assert_eq!(Ok((0.6, 2.2)), linear_regression(&xs, &ys));
     }
@@ -278,20 +261,19 @@ mod tests {
         let ys: Vec<u8> = vec![2, 4, 5, 4, 5];
 
         assert_eq!(Ok((0.6, 2.2)), linear_regression(&xs, &ys));
-}
+    }
 
-#[test]
+    #[test]
     fn float_tuples_regression() {
         let tuples: Vec<(f32, f32)> =
             vec![(1.0, 2.0), (2.0, 4.0), (3.0, 5.0), (4.0, 4.0), (5.0, 5.0)];
 
-    assert_eq!(Ok((0.6, 2.2)), linear_regression_of(&tuples));
-}
+        assert_eq!(Ok((0.6, 2.2)), linear_regression_of(&tuples));
+    }
 
-#[test]
+    #[test]
     fn int_tuples_regression() {
-        let tuples: Vec<(u32, u32)> =
-            vec![(1, 2), (2, 4), (3, 5), (4, 4), (5, 5)];
+        let tuples: Vec<(u32, u32)> = vec![(1, 2), (2, 4), (3, 5), (4, 4), (5, 5)];
 
         assert_eq!(Ok((0.6, 2.2)), linear_regression_of(&tuples));
     }
