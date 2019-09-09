@@ -181,10 +181,20 @@ where
     Y: Clone + Into<F>,
     F: Float,
 {
-    // FIXME: cache penalty here, we should be calculating both means in a single step
-    //        to avoid iterating twice
-    let x_mean = xys.iter().map(|(x, _)| x.clone().into()).mean()?;
-    let y_mean = xys.iter().map(|(_, y)| y.clone().into()).mean()?;
+    if xys.is_empty() {
+        return None;
+    }
+    // We're handrolling the mean computation here, because our generic implementation can't handle tuples.
+    // If we ran the generic impl on each tuple field, that would be very cache inefficient
+    let n = F::from(xys.len())?;
+    let (x_sum, y_sum) = xys
+        .iter()
+        .cloned()
+        .fold((F::zero(), F::zero()), |(sx, sy), (x, y)| {
+            (sx + x.into(), sy + y.into())
+        });
+    let x_mean = x_sum / n;
+    let y_mean = y_sum / n;
 
     lin_reg(
         xys.iter().map(|(x, _)| x),
