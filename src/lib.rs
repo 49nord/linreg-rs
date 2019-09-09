@@ -103,10 +103,9 @@ fn empty_set_has_no_mean() {
 /// Since there is a mean, this function assumes that `xs` and `ys` are both non-empty.
 ///
 /// Returns `Some(slope, intercept)` of the regression line.
-pub fn lin_reg<'a, IX, IY, F>(xs: IX, ys: IY, x_mean: F, y_mean: F) -> Option<(F, F)>
+pub fn lin_reg<'a, I, F>(xys: I, x_mean: F, y_mean: F) -> Option<(F, F)>
 where
-    IX: Iterator<Item = F>,
-    IY: Iterator<Item = F>,
+    I: Iterator<Item = (F, F)>,
     F: Float,
 {
     // SUM (x-mean(x))^2
@@ -115,10 +114,7 @@ where
     // SUM (x-mean(x)) (y-mean(y))
     let mut xmym2 = F::zero();
 
-    for (x, y) in xs.zip(ys) {
-        let x: F = x.clone().into();
-        let y: F = y.clone().into();
-
+    for (x, y) in xys {
         xxm2 = xxm2 + (x - x_mean) * (x - x_mean);
         xmym2 = xmym2 + (x - x_mean) * (y - y_mean);
     }
@@ -160,7 +156,7 @@ where
     let x_mean = xs.iter().map(|i| i.clone().into()).mean()?;
     let y_mean = ys.iter().map(|i| i.clone().into()).mean()?;
 
-    lin_reg(xs.iter().map(|i| i.clone().into()), ys.iter().map(|i| i.clone().into()), x_mean, y_mean)
+    lin_reg(xs.iter().map(|i| i.clone().into()).zip(ys.iter().map(|i| i.clone().into())), x_mean, y_mean)
 }
 
 /// Linear regression from tuples
@@ -195,8 +191,7 @@ where
     let y_mean = y_sum / n;
 
     lin_reg(
-        xys.iter().map(|(x, _)| x.clone().into()),
-        xys.iter().map(|(_, y)| y.clone().into()),
+        xys.iter().map(|(x, y)| (x.clone().into(), y.clone().into())),
         x_mean,
         y_mean,
     )
