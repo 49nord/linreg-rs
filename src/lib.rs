@@ -51,10 +51,9 @@ pub trait IteratorMean<F> {
     fn mean(&mut self) -> Option<F>;
 }
 
-impl<'a, T, I, F> IteratorMean<F> for I
+impl<'a, I, F> IteratorMean<F> for I
 where
-    T: 'a + Into<F> + Clone,
-    I: Iterator<Item = &'a T>,
+    I: Iterator<Item = F>,
     F: Float,
 {
     fn mean(&mut self) -> Option<F> {
@@ -63,7 +62,7 @@ where
 
         loop {
             if let Some(i) = self.next() {
-                total = total + i.clone().into();
+                total = total + i;
                 count += 1;
             } else {
                 break;
@@ -81,18 +80,18 @@ where
 #[test]
 fn simple_integer_mean() {
     let vals: Vec<u32> = vec![5, 8, 12, 17];
-    assert_eq!(10.5, vals.iter().mean().unwrap());
+    assert_eq!(10.5, vals.iter().map(|&i| i.into()).mean().unwrap());
 }
 
 #[test]
 fn simple_float_mean() {
     let vals: Vec<f64> = vec![5.0, 8.0, 12.0, 17.0];
-    assert_eq!(10.5, vals.iter().mean().unwrap());
+    assert_eq!(10.5, vals.iter().cloned().mean().unwrap());
 }
 
 #[test]
 fn empty_set_has_no_mean() {
-    let res: Option<f32> = Vec::<u16>::new().iter().mean();
+    let res: Option<f32> = Vec::<u16>::new().iter().map(|&i| i.into()).mean();
     assert!(res.is_none());
 }
 
@@ -162,8 +161,8 @@ where
     }
 
     // if one of the axes is empty, we return `None`
-    let x_mean = xs.iter().mean()?;
-    let y_mean = ys.iter().mean()?;
+    let x_mean = xs.iter().map(|i| i.clone().into()).mean()?;
+    let y_mean = ys.iter().map(|i| i.clone().into()).mean()?;
 
     lin_reg(xs.iter(), ys.iter(), x_mean, y_mean)
 }
@@ -186,8 +185,8 @@ where
 {
     // FIXME: cache penalty here, we should be calculating both means in a single step
     //        to avoid iterating twice
-    let x_mean = xys.iter().map(|(x, _)| x).mean()?;
-    let y_mean = xys.iter().map(|(_, y)| y).mean()?;
+    let x_mean = xys.iter().map(|(x, _)| x.clone().into()).mean()?;
+    let y_mean = xys.iter().map(|(_, y)| y.clone().into()).mean()?;
 
     lin_reg(
         xys.iter().map(|(x, _)| x),
