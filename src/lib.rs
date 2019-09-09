@@ -60,13 +60,9 @@ where
         let mut total = F::zero();
         let mut count: usize = 0;
 
-        loop {
-            if let Some(i) = self.next() {
-                total = total + i;
-                count += 1;
-            } else {
-                break;
-            }
+        while let Some(i) = self.next() {
+            total = total + i;
+            count += 1;
         }
 
         if count > 0 {
