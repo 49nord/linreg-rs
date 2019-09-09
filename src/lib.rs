@@ -58,6 +58,8 @@ where
 {
     fn mean(&mut self) -> Option<F> {
         let mut total = F::zero();
+        // FIXME: this variable is unnecessary in many cases where the length
+        // is know without iterating
         let mut count: usize = 0;
 
         while let Some(i) = self.next() {
