@@ -111,7 +111,13 @@ where
     let y_sum: F = ys.iter().cloned().map(|i| i.into()).sum();
     let y_mean = y_sum / n;
 
-    lin_reg(xs.iter().map(|i| i.clone().into()).zip(ys.iter().map(|i| i.clone().into())), x_mean, y_mean)
+    lin_reg(
+        xs.iter()
+            .map(|i| i.clone().into())
+            .zip(ys.iter().map(|i| i.clone().into())),
+        x_mean,
+        y_mean,
+    )
 }
 
 /// Linear regression from tuples
@@ -147,7 +153,8 @@ where
     let y_mean = y_sum / n;
 
     lin_reg(
-        xys.iter().map(|(x, y)| (x.clone().into(), y.clone().into())),
+        xys.iter()
+            .map(|(x, y)| (x.clone().into(), y.clone().into())),
         x_mean,
         y_mean,
     )
