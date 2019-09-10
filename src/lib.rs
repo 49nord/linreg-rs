@@ -29,7 +29,7 @@
 //!    assert_eq!(Ok((0.6, 2.2)), linear_regression(&xs, &ys));
 //! ```
 #![no_std]
-#![deny(clippy::pedantic)]
+#![warn(clippy::pedantic)]
 
 extern crate num_traits;
 
@@ -71,6 +71,44 @@ impl fmt::Display for Error {
     }
 }
 
+/// Calculates a linear regression without requiring pre-computation of the mean.
+///
+/// Lower-level linear regression function.
+/// A bit less precise than `linreg`, but mostly irrelevant in practice.
+///
+/// Errors if the number of elements is too large to be represented as `F`
+///
+/// Returns `Ok((slope, intercept))` of the regression line.
+pub fn lin_reg_imprecise<'a, I, F>(xys: I) -> Result<(F, F), Error>
+where
+    F: FloatCore + core::ops::AddAssign + core::ops::DivAssign,
+    I: Iterator<Item = (F, F)>,
+{
+    let mut x_mean = F::zero();
+    let mut y_mean = F::zero();
+    let mut x_mul_y_mean = F::zero();
+    let mut x_squared_mean = F::zero();
+    let mut n = 0;
+
+    for (x, y) in xys {
+        x_mean += x;
+        y_mean += y;
+        x_mul_y_mean += x * y;
+        x_squared_mean += x * x;
+        n += 1;
+    }
+
+    let n = F::from(n).ok_or(Error::Mean)?;
+    x_mean /= n;
+    y_mean /= n;
+    x_mul_y_mean /= n;
+    x_squared_mean /= n;
+
+    let slope = (x_mul_y_mean - x_mean * y_mean) / (x_squared_mean - x_mean * x_mean);
+    let intercept = y_mean - slope * x_mean;
+    Ok((slope, intercept))
+}
+
 /// Calculates a linear regression.
 ///
 /// Lower-level linear regression function. Assumes that `x_mean` and `y_mean`
@@ -80,7 +118,7 @@ impl fmt::Display for Error {
 ///
 /// Since there is a mean, this function assumes that `xs` and `ys` are both non-empty.
 ///
-/// Returns `Some(slope, intercept)` of the regression line.
+/// Returns `Ok((slope, intercept))` of the regression line.
 pub fn lin_reg<'a, I, F>(xys: I, x_mean: F, y_mean: F) -> Result<(F, F), Error>
 where
     I: Iterator<Item = (F, F)>,
@@ -201,6 +239,18 @@ mod tests {
         let ys: Vec<f64> = vec![2.0, 4.0, 5.0, 4.0, 5.0];
 
         assert_eq!(Ok((0.6, 2.2)), linear_regression(&xs, &ys));
+    }
+
+    #[test]
+    fn lin_reg_imprecises_vs_linreg() {
+        let xs: Vec<f64> = vec![1.0, 2.0, 3.0, 4.0, 5.0];
+        let ys: Vec<f64> = vec![2.0, 4.0, 5.0, 4.0, 5.0];
+
+        let (x1, y1) = lin_reg_imprecise(xs.iter().cloned().zip(ys.iter().cloned())).unwrap();
+        let (x2, y2): (f64, f64) = linear_regression(&xs, &ys).unwrap();
+
+        assert!(f64::abs(x1 - x2) < 0.00001);
+        assert!(f64::abs(y1 - y2) < 0.00001);
     }
 
     #[test]
