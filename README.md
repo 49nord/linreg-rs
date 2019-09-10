@@ -11,4 +11,4 @@ let ys: Vec<f64> = vec![2.0, 4.0, 5.0, 4.0, 5.0];
 assert_eq!(Some((0.6, 2.2)), linear_regression(&xs, &ys));
 ```
 
-It supports tubles, separate vectors for x and y values and template floating point types.
+It supports tuples, separate vectors for x and y values and template floating point types.
