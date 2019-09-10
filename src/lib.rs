@@ -42,56 +42,7 @@ extern crate std;
 use std::vec::Vec;
 
 use core::iter::Iterator;
-
-/// Calculate a mean over an iterator
-pub trait IteratorMean<F> {
-    /// Calculates the mean value of all returned items of an iterator. Returns
-    /// `None` if either no items are present or more items than can be counted
-    /// by `F` (conversion from `usize` to  `F` is not possible).
-    fn mean(&mut self) -> Option<F>;
-}
-
-impl<'a, I, F> IteratorMean<F> for I
-where
-    I: Iterator<Item = F>,
-    F: Float,
-{
-    fn mean(&mut self) -> Option<F> {
-        let mut total = F::zero();
-        // FIXME: this variable is unnecessary in many cases where the length
-        // is know without iterating
-        let mut count: usize = 0;
-
-        while let Some(i) = self.next() {
-            total = total + i;
-            count += 1;
-        }
-
-        if count > 0 {
-            Some(total / F::from(count)?)
-        } else {
-            None
-        }
-    }
-}
-
-#[test]
-fn simple_integer_mean() {
-    let vals: Vec<u32> = vec![5, 8, 12, 17];
-    assert_eq!(10.5, vals.iter().map(|&i| i.into()).mean().unwrap());
-}
-
-#[test]
-fn simple_float_mean() {
-    let vals: Vec<f64> = vec![5.0, 8.0, 12.0, 17.0];
-    assert_eq!(10.5, vals.iter().cloned().mean().unwrap());
-}
-
-#[test]
-fn empty_set_has_no_mean() {
-    let res: Option<f32> = Vec::<u16>::new().iter().map(|&i| i.into()).mean();
-    assert!(res.is_none());
-}
+use core::iter::Sum;
 
 /// Calculates a linear regression
 ///
@@ -138,23 +89,27 @@ where
 /// Returns `None` if
 ///
 /// * `xs` and `ys` differ in length
-/// * `xs` or `ys` do not have a mean (e.g. if they are empty, see `IteratorMean` for details)
+/// * `xs` or `ys` are empty
 /// * the slope is too steep to represent, approaching infinity
+/// * the number of elements cannot be represented as an `F`
 ///
 /// Returns `Some(slope, intercept)` of the regression line.
 pub fn linear_regression<X, Y, F>(xs: &[X], ys: &[Y]) -> Option<(F, F)>
 where
     X: Clone + Into<F>,
     Y: Clone + Into<F>,
-    F: Float,
+    F: Float + Sum,
 {
     if xs.len() != ys.len() {
         return None;
     }
 
     // if one of the axes is empty, we return `None`
-    let x_mean = xs.iter().map(|i| i.clone().into()).mean()?;
-    let y_mean = ys.iter().map(|i| i.clone().into()).mean()?;
+    let x_sum: F = xs.iter().cloned().map(|i| i.into()).sum();
+    let n = F::from(xs.len())?;
+    let x_mean = x_sum / n;
+    let y_sum: F = ys.iter().cloned().map(|i| i.into()).sum();
+    let y_mean = y_sum / n;
 
     lin_reg(xs.iter().map(|i| i.clone().into()).zip(ys.iter().map(|i| i.clone().into())), x_mean, y_mean)
 }
@@ -165,8 +120,9 @@ where
 ///
 /// Returns `None` if
 ///
-/// * `x` or `y` tuple members do not have a mean (e.g. if they are empty, see `IteratorMean` for details)
+/// * `xys` is empty
 /// * the slope is too steep to represent, approaching infinity
+/// * the number of elements cannot be represented as an `F`
 ///
 /// Returns `Some(slope, intercept)` of the regression line.
 pub fn linear_regression_of<X, Y, F>(xys: &[(X, Y)]) -> Option<(F, F)>
