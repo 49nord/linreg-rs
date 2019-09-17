@@ -81,7 +81,7 @@ impl fmt::Display for Error {
 /// Returns `Ok((slope, intercept))` of the regression line.
 pub fn lin_reg_imprecise<'a, I, F>(xys: I) -> Result<(F, F), Error>
 where
-    F: FloatCore + core::ops::AddAssign + core::ops::DivAssign,
+    F: FloatCore,
     I: Iterator<Item = (F, F)>,
 {
     let mut x_mean = F::zero();
@@ -91,18 +91,18 @@ where
     let mut n = 0;
 
     for (x, y) in xys {
-        x_mean += x;
-        y_mean += y;
-        x_mul_y_mean += x * y;
-        x_squared_mean += x * x;
+        x_mean = x_mean + x;
+        y_mean = y_mean + y;
+        x_mul_y_mean = x_mul_y_mean + x * y;
+        x_squared_mean = x_squared_mean + x * x;
         n += 1;
     }
 
     let n = F::from(n).ok_or(Error::Mean)?;
-    x_mean /= n;
-    y_mean /= n;
-    x_mul_y_mean /= n;
-    x_squared_mean /= n;
+    x_mean = x_mean / n;
+    y_mean = y_mean / n;
+    x_mul_y_mean = x_mul_y_mean / n;
+    x_squared_mean = x_squared_mean / n;
 
     let slope = (x_mul_y_mean - x_mean * y_mean) / (x_squared_mean - x_mean * x_mean);
     let intercept = y_mean - slope * x_mean;
