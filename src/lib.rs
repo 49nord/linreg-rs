@@ -106,6 +106,11 @@ where
 
     let slope = (x_mul_y_mean - x_mean * y_mean) / (x_squared_mean - x_mean * x_mean);
     let intercept = y_mean - slope * x_mean;
+
+    if slope.is_nan() {
+        return Err(Error::TooSteep);
+    }
+
     Ok((slope, intercept))
 }
 
