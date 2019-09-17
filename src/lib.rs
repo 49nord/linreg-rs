@@ -76,7 +76,8 @@ impl fmt::Display for Error {
 /// Lower-level linear regression function.
 /// A bit less precise than `linreg`, but mostly irrelevant in practice.
 ///
-/// Errors if the number of elements is too large to be represented as `F`
+/// Errors if the number of elements is too large to be represented as `F` or
+/// the slope is too steep to represent, approaching infinity.
 ///
 /// Returns `Ok((slope, intercept))` of the regression line.
 pub fn lin_reg_imprecise<'a, I, F>(xys: I) -> Result<(F, F), Error>
@@ -155,6 +156,8 @@ where
 /// Linear regression from two slices.
 ///
 /// Calculates the linear regression from two slices, one for x- and one for y-values.
+/// This requires two iterations over the slices in order to precompute the mean. For
+/// large slices it may be faster to use `lin_reg_imprecise` instead.
 ///
 /// Returns an error if
 ///
@@ -195,6 +198,8 @@ where
 /// Linear regression from tuples.
 ///
 /// Calculates the linear regression from a slice of tuple values.
+/// This requires two iterations over the slice in order to precompute the mean. For
+/// large slices it may be faster to use `lin_reg_imprecise` instead.
 ///
 /// Returns an error if
 ///
