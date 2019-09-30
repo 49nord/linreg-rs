@@ -85,34 +85,59 @@ where
     F: FloatCore,
     I: Iterator<Item = (F, F)>,
 {
-    let mut x_mean = F::zero();
-    let mut y_mean = F::zero();
-    let mut x_mul_y_mean = F::zero();
-    let mut x_squared_mean = F::zero();
-    let mut n = 0;
+    let (x_mean, y_mean, x_mul_y_mean, x_squared_mean) =
+        details::lin_reg_imprecise_components(xys)?;
+    details::finish_lin_reg_imprecise(x_mean, y_mean, x_mul_y_mean, x_squared_mean)
+}
 
-    for (x, y) in xys {
-        x_mean = x_mean + x;
-        y_mean = y_mean + y;
-        x_mul_y_mean = x_mul_y_mean + x * y;
-        x_squared_mean = x_squared_mean + x * x;
-        n += 1;
+/// A module containing the building parts of the main API.
+/// You can use these if you want to have more control over the linear regression
+pub mod details {
+    use super::Error;
+    use num_traits::float::FloatCore;
+
+    pub fn lin_reg_imprecise_components<'a, I, F>(xys: I) -> Result<(F, F, F, F), Error>
+    where
+        F: FloatCore,
+        I: Iterator<Item = (F, F)>,
+    {
+        let mut x_mean = F::zero();
+        let mut y_mean = F::zero();
+        let mut x_mul_y_mean = F::zero();
+        let mut x_squared_mean = F::zero();
+        let mut n = 0;
+
+        for (x, y) in xys {
+            x_mean = x_mean + x;
+            y_mean = y_mean + y;
+            x_mul_y_mean = x_mul_y_mean + x * y;
+            x_squared_mean = x_squared_mean + x * x;
+            n += 1;
+        }
+
+        let n = F::from(n).ok_or(Error::Mean)?;
+        x_mean = x_mean / n;
+        y_mean = y_mean / n;
+        x_mul_y_mean = x_mul_y_mean / n;
+        x_squared_mean = x_squared_mean / n;
+        Ok((x_mean, y_mean, x_mul_y_mean, x_squared_mean))
     }
 
-    let n = F::from(n).ok_or(Error::Mean)?;
-    x_mean = x_mean / n;
-    y_mean = y_mean / n;
-    x_mul_y_mean = x_mul_y_mean / n;
-    x_squared_mean = x_squared_mean / n;
+    pub fn finish_lin_reg_imprecise<F: FloatCore>(
+        x_mean: F,
+        y_mean: F,
+        x_mul_y_mean: F,
+        x_squared_mean: F,
+    ) -> Result<(F, F), Error> {
+        let slope = (x_mul_y_mean - x_mean * y_mean) / (x_squared_mean - x_mean * x_mean);
+        let intercept = y_mean - slope * x_mean;
 
-    let slope = (x_mul_y_mean - x_mean * y_mean) / (x_squared_mean - x_mean * x_mean);
-    let intercept = y_mean - slope * x_mean;
+        if slope.is_nan() {
+            return Err(Error::TooSteep);
+        }
 
-    if slope.is_nan() {
-        return Err(Error::TooSteep);
+        Ok((slope, intercept))
     }
-
-    Ok((slope, intercept))
 }
 
 /// Calculates a linear regression.
