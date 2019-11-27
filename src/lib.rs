@@ -85,9 +85,7 @@ where
     F: FloatCore,
     I: Iterator<Item = (F, F)>,
 {
-    let (x_mean, y_mean, x_mul_y_mean, x_squared_mean) =
-        details::lin_reg_imprecise_components(xys)?;
-    details::finish_lin_reg_imprecise(x_mean, y_mean, x_mul_y_mean, x_squared_mean)
+    details::lin_reg_imprecise_components(xys)?.finish()
 }
 
 /// A module containing the building parts of the main API.
@@ -96,47 +94,92 @@ pub mod details {
     use super::Error;
     use num_traits::float::FloatCore;
 
-    pub fn lin_reg_imprecise_components<I, F>(xys: I) -> Result<(F, F, F, F), Error>
-    where
-        F: FloatCore,
-        I: Iterator<Item = (F, F)>,
-    {
-        let mut x_mean = F::zero();
-        let mut y_mean = F::zero();
-        let mut x_mul_y_mean = F::zero();
-        let mut x_squared_mean = F::zero();
-        let mut n = 0;
-
-        for (x, y) in xys {
-            x_mean = x_mean + x;
-            y_mean = y_mean + y;
-            x_mul_y_mean = x_mul_y_mean + x * y;
-            x_squared_mean = x_squared_mean + x * x;
-            n += 1;
-        }
-
-        let n = F::from(n).ok_or(Error::Mean)?;
-        x_mean = x_mean / n;
-        y_mean = y_mean / n;
-        x_mul_y_mean = x_mul_y_mean / n;
-        x_squared_mean = x_squared_mean / n;
-        Ok((x_mean, y_mean, x_mul_y_mean, x_squared_mean))
-    }
-
-    pub fn finish_lin_reg_imprecise<F: FloatCore>(
+    /// Low level linear regression primitive for pushing values instead of fetching them
+    /// from an iterator
+    pub struct Accumulator<F: FloatCore> {
         x_mean: F,
         y_mean: F,
         x_mul_y_mean: F,
         x_squared_mean: F,
-    ) -> Result<(F, F), Error> {
-        let slope = (x_mul_y_mean - x_mean * y_mean) / (x_squared_mean - x_mean * x_mean);
-        let intercept = y_mean - slope * x_mean;
+        n: usize,
+    }
 
-        if slope.is_nan() {
-            return Err(Error::TooSteep);
+    impl<F: FloatCore> Default for Accumulator<F> {
+        fn default() -> Self {
+            Self::new()
+        }
+    }
+
+    impl<F: FloatCore> Accumulator<F> {
+        pub fn new() -> Self {
+            Self {
+                x_mean: F::zero(),
+                y_mean: F::zero(),
+                x_mul_y_mean: F::zero(),
+                x_squared_mean: F::zero(),
+                n: 0,
+            }
         }
 
-        Ok((slope, intercept))
+        pub fn push(&mut self, x: F, y: F) {
+            self.x_mean = self.x_mean + x;
+            self.y_mean = self.y_mean + y;
+            self.x_mul_y_mean = self.x_mul_y_mean + x * y;
+            self.x_squared_mean = self.x_squared_mean + x * x;
+            self.n += 1;
+        }
+
+        pub fn normalize(&mut self) -> Result<(), Error> {
+            if self.n == 1 {
+                return Ok(());
+            }
+            let n = F::from(self.n).ok_or(Error::Mean)?;
+            self.n = 1;
+            self.x_mean = self.x_mean / n;
+            self.y_mean = self.y_mean / n;
+            self.x_mul_y_mean = self.x_mul_y_mean / n;
+            self.x_squared_mean = self.x_squared_mean / n;
+            Ok(())
+        }
+
+        pub fn parts(mut self) -> Result<(F, F, F, F), Error> {
+            self.normalize()?;
+            let Self {
+                x_mean,
+                y_mean,
+                x_mul_y_mean,
+                x_squared_mean,
+                ..
+            } = self;
+            Ok((x_mean, y_mean, x_mul_y_mean, x_squared_mean))
+        }
+
+        pub fn finish(self) -> Result<(F, F), Error> {
+            let (x_mean, y_mean, x_mul_y_mean, x_squared_mean) = self.parts()?;
+            let slope = (x_mul_y_mean - x_mean * y_mean) / (x_squared_mean - x_mean * x_mean);
+            let intercept = y_mean - slope * x_mean;
+
+            if slope.is_nan() {
+                return Err(Error::TooSteep);
+            }
+
+            Ok((slope, intercept))
+        }
+    }
+
+    pub fn lin_reg_imprecise_components<I, F>(xys: I) -> Result<Accumulator<F>, Error>
+    where
+        F: FloatCore,
+        I: Iterator<Item = (F, F)>,
+    {
+        let mut acc = Accumulator::new();
+
+        for (x, y) in xys {
+            acc.push(x, y);
+        }
+
+        acc.normalize()?;
+        Ok(acc)
     }
 }
 
