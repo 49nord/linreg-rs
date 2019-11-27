@@ -53,6 +53,8 @@ pub enum Error {
     Mean,
     /// Lengths of the inputs are different.
     InputLenDif,
+    /// Can't compute linear regression of zero elements
+    NoElements,
 }
 
 impl fmt::Display for Error {
@@ -67,6 +69,7 @@ impl fmt::Display for Error {
                 "Failed to calculate mean. Input was empty or had too many elements"
             ),
             Self::InputLenDif => write!(f, "Lengths of the inputs are different"),
+            Self::NoElements => write!(f, "Can't compute linear regression of zero elements"),
         }
     }
 }
@@ -130,8 +133,10 @@ pub mod details {
         }
 
         pub fn normalize(&mut self) -> Result<(), Error> {
-            if self.n == 1 {
-                return Ok(());
+            match self.n {
+                1 => return Ok(()),
+                0 => return Err(Error::NoElements),
+                _ => {}
             }
             let n = F::from(self.n).ok_or(Error::Mean)?;
             self.n = 1;
