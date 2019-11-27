@@ -58,15 +58,15 @@ pub enum Error {
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Error::TooSteep => write!(
+            Self::TooSteep => write!(
                 f,
                 "The slope is too steep to represent, approaching infinity."
             ),
-            Error::Mean => write!(
+            Self::Mean => write!(
                 f,
                 "Failed to calculate mean. Input was empty or had too many elements"
             ),
-            Error::InputLenDif => write!(f, "Lengths of the inputs are different"),
+            Self::InputLenDif => write!(f, "Lengths of the inputs are different"),
         }
     }
 }
@@ -80,7 +80,7 @@ impl fmt::Display for Error {
 /// the slope is too steep to represent, approaching infinity.
 ///
 /// Returns `Ok((slope, intercept))` of the regression line.
-pub fn lin_reg_imprecise<'a, I, F>(xys: I) -> Result<(F, F), Error>
+pub fn lin_reg_imprecise<I, F>(xys: I) -> Result<(F, F), Error>
 where
     F: FloatCore,
     I: Iterator<Item = (F, F)>,
@@ -96,7 +96,7 @@ pub mod details {
     use super::Error;
     use num_traits::float::FloatCore;
 
-    pub fn lin_reg_imprecise_components<'a, I, F>(xys: I) -> Result<(F, F, F, F), Error>
+    pub fn lin_reg_imprecise_components<I, F>(xys: I) -> Result<(F, F, F, F), Error>
     where
         F: FloatCore,
         I: Iterator<Item = (F, F)>,
@@ -150,7 +150,7 @@ pub mod details {
 /// Since there is a mean, this function assumes that `xs` and `ys` are both non-empty.
 ///
 /// Returns `Ok((slope, intercept))` of the regression line.
-pub fn lin_reg<'a, I, F>(xys: I, x_mean: F, y_mean: F) -> Result<(F, F), Error>
+pub fn lin_reg<I, F>(xys: I, x_mean: F, y_mean: F) -> Result<(F, F), Error>
 where
     I: Iterator<Item = (F, F)>,
     F: FloatCore,
