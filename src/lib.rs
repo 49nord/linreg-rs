@@ -39,39 +39,23 @@ use num_traits::float::FloatCore;
 #[macro_use]
 extern crate std;
 
-use core::fmt;
 use core::iter::Iterator;
 use core::iter::Sum;
+use displaydoc::Display;
 
 /// The kinds of errors that can occur when calculating a linear regression.
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Display, Debug, PartialEq)]
 pub enum Error {
     /// The slope is too steep to represent, approaching infinity.
     TooSteep,
     /// Failed to calculate mean.
+    ///
     /// This means the input was empty or had too many elements.
     Mean,
     /// Lengths of the inputs are different.
     InputLenDif,
     /// Can't compute linear regression of zero elements
     NoElements,
-}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            Error::TooSteep => write!(
-                f,
-                "The slope is too steep to represent, approaching infinity."
-            ),
-            Error::Mean => write!(
-                f,
-                "Failed to calculate mean. Input was empty or had too many elements"
-            ),
-            Error::InputLenDif => write!(f, "Lengths of the inputs are different"),
-            Error::NoElements => write!(f, "Can't compute linear regression of zero elements"),
-        }
-    }
 }
 
 /// Calculates a linear regression without requiring pre-computation of the mean.
