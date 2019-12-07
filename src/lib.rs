@@ -29,7 +29,7 @@
 //!    assert_eq!(Ok((0.6, 2.2)), linear_regression(&xs, &ys));
 //! ```
 #![no_std]
-#![warn(clippy::pedantic)]
+#![deny(clippy::pedantic)]
 
 extern crate num_traits;
 
@@ -60,16 +60,16 @@ pub enum Error {
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Self::TooSteep => write!(
+            Error::TooSteep => write!(
                 f,
                 "The slope is too steep to represent, approaching infinity."
             ),
-            Self::Mean => write!(
+            Error::Mean => write!(
                 f,
                 "Failed to calculate mean. Input was empty or had too many elements"
             ),
-            Self::InputLenDif => write!(f, "Lengths of the inputs are different"),
-            Self::NoElements => write!(f, "Can't compute linear regression of zero elements"),
+            Error::InputLenDif => write!(f, "Lengths of the inputs are different"),
+            Error::NoElements => write!(f, "Can't compute linear regression of zero elements"),
         }
     }
 }
