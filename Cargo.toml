@@ -1,4 +1,5 @@
 [package]
+edition = "2018"
 authors = ["49nord GmbH <hello@49nord.de>"]
 description = "Calculates linear regresssions of two-dimensional data. Does not use stdlib, only depends on numeric traits."
 documentation = "https://docs.rs/linreg"
