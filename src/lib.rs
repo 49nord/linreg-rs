@@ -29,7 +29,6 @@
 //!    assert_eq!(Ok((0.6, 2.2)), linear_regression(&xs, &ys));
 //! ```
 #![no_std]
-#![deny(clippy::pedantic)]
 
 extern crate num_traits;
 
