@@ -29,7 +29,7 @@
 //!    assert_eq!(Ok((0.6, 2.2)), linear_regression(&xs, &ys));
 //! ```
 #![no_std]
-#![deny(clippy::pedantic)]
+#![warn(clippy::pedantic)]
 
 extern crate num_traits;
 
@@ -53,21 +53,138 @@ pub enum Error {
     Mean,
     /// Lengths of the inputs are different.
     InputLenDif,
+    /// Can't compute linear regression of zero elements
+    NoElements,
 }
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Error::TooSteep => write!(
+            Self::TooSteep => write!(
                 f,
                 "The slope is too steep to represent, approaching infinity."
             ),
-            Error::Mean => write!(
+            Self::Mean => write!(
                 f,
                 "Failed to calculate mean. Input was empty or had too many elements"
             ),
-            Error::InputLenDif => write!(f, "Lengths of the inputs are different"),
+            Self::InputLenDif => write!(f, "Lengths of the inputs are different"),
+            Self::NoElements => write!(f, "Can't compute linear regression of zero elements"),
         }
+    }
+}
+
+/// Calculates a linear regression without requiring pre-computation of the mean.
+///
+/// Lower-level linear regression function.
+/// A bit less precise than `linreg`, but mostly irrelevant in practice.
+///
+/// Errors if the number of elements is too large to be represented as `F` or
+/// the slope is too steep to represent, approaching infinity.
+///
+/// Returns `Ok((slope, intercept))` of the regression line.
+pub fn lin_reg_imprecise<I, F>(xys: I) -> Result<(F, F), Error>
+where
+    F: FloatCore,
+    I: Iterator<Item = (F, F)>,
+{
+    details::lin_reg_imprecise_components(xys)?.finish()
+}
+
+/// A module containing the building parts of the main API.
+/// You can use these if you want to have more control over the linear regression
+pub mod details {
+    use super::Error;
+    use num_traits::float::FloatCore;
+
+    /// Low level linear regression primitive for pushing values instead of fetching them
+    /// from an iterator
+    pub struct Accumulator<F: FloatCore> {
+        x_mean: F,
+        y_mean: F,
+        x_mul_y_mean: F,
+        x_squared_mean: F,
+        n: usize,
+    }
+
+    impl<F: FloatCore> Default for Accumulator<F> {
+        fn default() -> Self {
+            Self::new()
+        }
+    }
+
+    impl<F: FloatCore> Accumulator<F> {
+        pub fn new() -> Self {
+            Self {
+                x_mean: F::zero(),
+                y_mean: F::zero(),
+                x_mul_y_mean: F::zero(),
+                x_squared_mean: F::zero(),
+                n: 0,
+            }
+        }
+
+        pub fn push(&mut self, x: F, y: F) {
+            self.x_mean = self.x_mean + x;
+            self.y_mean = self.y_mean + y;
+            self.x_mul_y_mean = self.x_mul_y_mean + x * y;
+            self.x_squared_mean = self.x_squared_mean + x * x;
+            self.n += 1;
+        }
+
+        pub fn normalize(&mut self) -> Result<(), Error> {
+            match self.n {
+                1 => return Ok(()),
+                0 => return Err(Error::NoElements),
+                _ => {}
+            }
+            let n = F::from(self.n).ok_or(Error::Mean)?;
+            self.n = 1;
+            self.x_mean = self.x_mean / n;
+            self.y_mean = self.y_mean / n;
+            self.x_mul_y_mean = self.x_mul_y_mean / n;
+            self.x_squared_mean = self.x_squared_mean / n;
+            Ok(())
+        }
+
+        pub fn parts(mut self) -> Result<(F, F, F, F), Error> {
+            self.normalize()?;
+            let Self {
+                x_mean,
+                y_mean,
+                x_mul_y_mean,
+                x_squared_mean,
+                ..
+            } = self;
+            Ok((x_mean, y_mean, x_mul_y_mean, x_squared_mean))
+        }
+
+        pub fn finish(self) -> Result<(F, F), Error> {
+            let (x_mean, y_mean, x_mul_y_mean, x_squared_mean) = self.parts()?;
+            let slope = (x_mul_y_mean - x_mean * y_mean) / (x_squared_mean - x_mean * x_mean);
+            let intercept = y_mean - slope * x_mean;
+
+            if slope.is_nan() {
+                return Err(Error::TooSteep);
+            }
+
+            Ok((slope, intercept))
+        }
+    }
+
+    pub fn lin_reg_imprecise_components<I, F>(xys: I) -> Result<Accumulator<F>, Error>
+    where
+        F: FloatCore,
+        I: Iterator<Item = (F, F)>,
+    {
+        let mut acc = Accumulator::new();
+
+        for (x, y) in xys {
+            acc.push(x, y);
+        }
+
+        acc.normalize()?;
+        Ok(acc)
     }
 }
 
@@ -80,8 +197,8 @@ impl fmt::Display for Error {
 ///
 /// Since there is a mean, this function assumes that `xs` and `ys` are both non-empty.
 ///
-/// Returns `Some(slope, intercept)` of the regression line.
-pub fn lin_reg<'a, I, F>(xys: I, x_mean: F, y_mean: F) -> Result<(F, F), Error>
+/// Returns `Ok((slope, intercept))` of the regression line.
+pub fn lin_reg<I, F>(xys: I, x_mean: F, y_mean: F) -> Result<(F, F), Error>
 where
     I: Iterator<Item = (F, F)>,
     F: FloatCore,
@@ -112,6 +229,8 @@ where
 /// Linear regression from two slices.
 ///
 /// Calculates the linear regression from two slices, one for x- and one for y-values.
+/// This requires two iterations over the slices in order to precompute the mean. For
+/// large slices it may be faster to use `lin_reg_imprecise` instead.
 ///
 /// Returns an error if
 ///
@@ -152,6 +271,8 @@ where
 /// Linear regression from tuples.
 ///
 /// Calculates the linear regression from a slice of tuple values.
+/// This requires two iterations over the slice in order to precompute the mean. For
+/// large slices it may be faster to use `lin_reg_imprecise` instead.
 ///
 /// Returns an error if
 ///
@@ -201,6 +322,18 @@ mod tests {
         let ys: Vec<f64> = vec![2.0, 4.0, 5.0, 4.0, 5.0];
 
         assert_eq!(Ok((0.6, 2.2)), linear_regression(&xs, &ys));
+    }
+
+    #[test]
+    fn lin_reg_imprecises_vs_linreg() {
+        let xs: Vec<f64> = vec![1.0, 2.0, 3.0, 4.0, 5.0];
+        let ys: Vec<f64> = vec![2.0, 4.0, 5.0, 4.0, 5.0];
+
+        let (x1, y1) = lin_reg_imprecise(xs.iter().cloned().zip(ys.iter().cloned())).unwrap();
+        let (x2, y2): (f64, f64) = linear_regression(&xs, &ys).unwrap();
+
+        assert!(f64::abs(x1 - x2) < 0.00001);
+        assert!(f64::abs(y1 - y2) < 0.00001);
     }
 
     #[test]
