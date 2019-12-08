@@ -90,6 +90,7 @@ pub mod details {
 
     /// Low level linear regression primitive for pushing values instead of fetching them
     /// from an iterator
+    #[derive(Debug)]
     pub struct Accumulator<F: FloatCore> {
         x_mean: F,
         y_mean: F,
