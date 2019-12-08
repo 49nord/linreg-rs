@@ -1,6 +1,12 @@
 //! Linear regression
 //!
-//! `linreg` calculates linear regressions for two dimensional measurements.
+//! `linreg` calculates linear regressions for two dimensional measurements, also known as
+//! [simple linear regression](https://en.wikipedia.org/wiki/Simple_linear_regression).
+//!
+//! Base for all calculations of linear regression is the simple model found in
+//! https://en.wikipedia.org/wiki/Ordinary_least_squares#Simple_linear_regression_model.
+//!
+//! ## Example use
 //!
 //! ```rust
 //!    use linreg::{linear_regression, linear_regression_of};
@@ -29,7 +35,6 @@
 //!    assert_eq!(Ok((0.6, 2.2)), linear_regression(&xs, &ys));
 //! ```
 #![no_std]
-#![warn(clippy::pedantic)]
 
 extern crate num_traits;
 
@@ -39,16 +44,17 @@ use num_traits::float::FloatCore;
 #[macro_use]
 extern crate std;
 
-use core::fmt;
 use core::iter::Iterator;
 use core::iter::Sum;
+use displaydoc::Display;
 
 /// The kinds of errors that can occur when calculating a linear regression.
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Display, Debug, PartialEq)]
 pub enum Error {
     /// The slope is too steep to represent, approaching infinity.
     TooSteep,
     /// Failed to calculate mean.
+    ///
     /// This means the input was empty or had too many elements.
     Mean,
     /// Lengths of the inputs are different.
@@ -57,32 +63,17 @@ pub enum Error {
     NoElements,
 }
 
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            Self::TooSteep => write!(
-                f,
-                "The slope is too steep to represent, approaching infinity."
-            ),
-            Self::Mean => write!(
-                f,
-                "Failed to calculate mean. Input was empty or had too many elements"
-            ),
-            Self::InputLenDif => write!(f, "Lengths of the inputs are different"),
-            Self::NoElements => write!(f, "Can't compute linear regression of zero elements"),
-        }
-    }
-}
-
-/// Calculates a linear regression without requiring pre-computation of the mean.
+/// Single-pass simple linear regression.
 ///
-/// Lower-level linear regression function.
-/// A bit less precise than `linreg`, but mostly irrelevant in practice.
+/// Similar to `lin_reg`, but does not require a mean value to be computed in advance and thus
+/// does not require a second pass over the input data.
+///
+/// Returns `Ok((slope, intercept))` of the regression line.
+///
+/// # Errors
 ///
 /// Errors if the number of elements is too large to be represented as `F` or
 /// the slope is too steep to represent, approaching infinity.
-///
-/// Returns `Ok((slope, intercept))` of the regression line.
 pub fn lin_reg_imprecise<I, F>(xys: I) -> Result<(F, F), Error>
 where
     F: FloatCore,
@@ -93,12 +84,13 @@ where
 
 /// A module containing the building parts of the main API.
 /// You can use these if you want to have more control over the linear regression
-pub mod details {
+mod details {
     use super::Error;
     use num_traits::float::FloatCore;
 
     /// Low level linear regression primitive for pushing values instead of fetching them
     /// from an iterator
+    #[derive(Debug)]
     pub struct Accumulator<F: FloatCore> {
         x_mean: F,
         y_mean: F,
@@ -188,7 +180,7 @@ pub mod details {
     }
 }
 
-/// Calculates a linear regression.
+/// Calculates a linear regression with a known mean.
 ///
 /// Lower-level linear regression function. Assumes that `x_mean` and `y_mean`
 /// have already been calculated. Returns `Error::DivByZero` if
@@ -226,11 +218,14 @@ where
     Ok((slope, intercept))
 }
 
-/// Linear regression from two slices.
+/// Two-pass simple linear regression from slices.
 ///
-/// Calculates the linear regression from two slices, one for x- and one for y-values.
-/// This requires two iterations over the slices in order to precompute the mean. For
-/// large slices it may be faster to use `lin_reg_imprecise` instead.
+/// Calculates the linear regression from two slices, one for x- and one for y-values, by
+/// calculating the mean and then calling `lin_reg`.
+///
+/// Returns `Ok(slope, intercept)` of the regression line.
+///
+/// # Errors
 ///
 /// Returns an error if
 ///
@@ -239,7 +234,6 @@ where
 /// * the slope is too steep to represent, approaching infinity
 /// * the number of elements cannot be represented as an `F`
 ///
-/// Returns `Ok(slope, intercept)` of the regression line.
 pub fn linear_regression<X, Y, F>(xs: &[X], ys: &[Y]) -> Result<(F, F), Error>
 where
     X: Clone + Into<F>,
@@ -268,19 +262,20 @@ where
     )
 }
 
-/// Linear regression from tuples.
+/// Two-pass linear regression from tuples.
 ///
-/// Calculates the linear regression from a slice of tuple values.
-/// This requires two iterations over the slice in order to precompute the mean. For
-/// large slices it may be faster to use `lin_reg_imprecise` instead.
+/// Calculates the linear regression from a slice of tuple values by first calculating the mean
+/// before calling `lin_reg`.
+///
+/// Returns `Ok(slope, intercept)` of the regression line.
+///
+/// # Errors
 ///
 /// Returns an error if
 ///
 /// * `xys` is empty
 /// * the slope is too steep to represent, approaching infinity
 /// * the number of elements cannot be represented as an `F`
-///
-/// Returns `Ok(slope, intercept)` of the regression line.
 pub fn linear_regression_of<X, Y, F>(xys: &[(X, Y)]) -> Result<(F, F), Error>
 where
     X: Clone + Into<F>,

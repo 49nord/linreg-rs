@@ -1,4 +1,5 @@
 [package]
+edition = "2018"
 authors = ["49nord GmbH <hello@49nord.de>"]
 description = "Calculates linear regresssions of two-dimensional data. Does not use stdlib, only depends on numeric traits."
 documentation = "https://docs.rs/linreg"
@@ -10,3 +11,7 @@ version = "0.1.3"
 
 [dependencies]
 num-traits = "0.2.4"
+
+[dependencies.displaydoc]
+version = "0.1.5"
+default-features = false  # Do not pull in `std` feature.
