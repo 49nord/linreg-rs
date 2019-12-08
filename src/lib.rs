@@ -84,7 +84,7 @@ where
 
 /// A module containing the building parts of the main API.
 /// You can use these if you want to have more control over the linear regression
-pub mod details {
+mod details {
     use super::Error;
     use num_traits::float::FloatCore;
 
