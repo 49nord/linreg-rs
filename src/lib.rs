@@ -100,12 +100,14 @@ mod details {
     }
 
     impl<F: FloatCore> Default for Accumulator<F> {
+        #[must_use]
         fn default() -> Self {
             Self::new()
         }
     }
 
     impl<F: FloatCore> Accumulator<F> {
+        #[must_use]
         pub fn new() -> Self {
             Self {
                 x_mean: F::zero(),
