@@ -40,7 +40,7 @@ extern crate num_traits;
 
 use num_traits::float::FloatCore;
 
-#[cfg(test)]
+#[cfg(any(test, feature = "std"))]
 #[macro_use]
 extern crate std;
 
@@ -62,6 +62,9 @@ pub enum Error {
     /// Can't compute linear regression of zero elements
     NoElements,
 }
+
+#[cfg(feature = "std")]
+impl std::error::Error for Error {}
 
 /// Single-pass simple linear regression.
 ///
