@@ -13,5 +13,5 @@ version = "0.2.0"
 num-traits = "0.2.4"
 
 [dependencies.displaydoc]
-version = "0.1.5"
+version = "0.2"
 default-features = false  # Do not pull in `std` feature.
